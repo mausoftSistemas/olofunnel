@@ -1,0 +1,235 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  campaigns Campaign[]
+  leads     Lead[]
+  reviews   Review[]
+  apiKeys   ApiKey[]
+
+  @@map("users")
+}
+
+model Campaign {
+  id          String   @id @default(cuid())
+  name        String
+  facebookId  String?  @unique
+  status      CampaignStatus @default(ACTIVE)
+  budget      Float?
+  objective   String?
+  targetAge   String?
+  targetGender String?
+  targetLocation String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leads       Lead[]
+  metrics     CampaignMetric[]
+
+  @@map("campaigns")
+}
+
+model Lead {
+  id            String     @id @default(cuid())
+  facebookId    String?    @unique
+  name          String?
+  email         String?
+  phone         String?
+  age           Int?
+  gender        String?
+  location      String?
+  interests     String[]
+  aiScore       Float?     // Puntuación IA 0-100
+  aiAnalysis    Json?      // Análisis detallado de IA
+  status        LeadStatus @default(NEW)
+  whatsappSent  Boolean    @default(false)
+  whatsappSentAt DateTime?
+  convertedAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relaciones
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignId    String?
+  campaign      Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  interactions  LeadInteraction[]
+
+  @@map("leads")
+}
+
+model LeadInteraction {
+  id          String   @id @default(cuid())
+  type        InteractionType
+  message     String?
+  response    String?
+  successful  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // Relaciones
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@map("lead_interactions")
+}
+
+model Review {
+  id            String       @id @default(cuid())
+  platform      ReviewPlatform
+  platformId    String       // ID único en la plataforma
+  businessName  String
+  businessId    String?      // ID del negocio en la plataforma
+  rating        Float
+  title         String?
+  content       String
+  authorName    String?
+  authorImage   String?
+  date          DateTime
+  sentiment     Sentiment?   // Análisis de sentimiento
+  sentimentScore Float?      // Puntuación de sentimiento -1 a 1
+  topics        String[]     // Temas identificados por IA
+  aiAnalysis    Json?        // Análisis detallado de IA
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relaciones
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([platform, platformId])
+  @@map("reviews")
+}
+
+model CampaignMetric {
+  id            String   @id @default(cuid())
+  date          DateTime
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  spend         Float    @default(0)
+  cpm           Float    @default(0)
+  cpc           Float    @default(0)
+  ctr           Float    @default(0)
+  conversions   Int      @default(0)
+  conversionRate Float   @default(0)
+  roas          Float    @default(0)
+  createdAt     DateTime @default(now())
+
+  // Relaciones
+  campaignId    String
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, date])
+  @@map("campaign_metrics")
+}
+
+model ApiKey {
+  id          String     @id @default(cuid())
+  name        String     // Nombre descriptivo
+  service     ApiService // Servicio (FACEBOOK, WHATSAPP, etc.)
+  keyValue    String     // Valor encriptado de la clave
+  isActive    Boolean    @default(true)
+  lastUsed    DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relaciones
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model SystemLog {
+  id        String    @id @default(cuid())
+  level     LogLevel
+  message   String
+  data      Json?
+  source    String?   // Fuente del log (API, Webhook, etc.)
+  userId    String?
+  createdAt DateTime  @default(now())
+
+  @@map("system_logs")
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum CampaignStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  REJECTED
+}
+
+enum InteractionType {
+  WHATSAPP_SENT
+  WHATSAPP_RECEIVED
+  EMAIL_SENT
+  CALL_MADE
+  NOTE_ADDED
+}
+
+enum ReviewPlatform {
+  GOOGLE_MAPS
+  YELP
+  TRUSTPILOT
+  AMAZON
+  APP_STORE
+  GOOGLE_PLAY
+}
+
+enum Sentiment {
+  POSITIVE
+  NEGATIVE
+  NEUTRAL
+}
+
+enum ApiService {
+  FACEBOOK
+  WHATSAPP
+  OPENAI
+  GOOGLE_MAPS
+  YELP
+  TRUSTPILOT
+  AMAZON
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  DEBUG
+}

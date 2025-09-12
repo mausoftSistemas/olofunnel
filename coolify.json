@@ -1,0 +1,78 @@
+{
+  "name": "OloFunnel",
+  "description": "Plataforma integral de IA para análisis de Facebook Ads y gestión de leads",
+  "type": "docker",
+  "dockerfile": "Dockerfile",
+  "port": 3000,
+  "healthcheck": {
+    "path": "/api/health",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3
+  },
+  "environment": {
+    "NODE_ENV": "production",
+    "PORT": "3000",
+    "DATABASE_URL": "${DATABASE_URL}",
+    "REDIS_URL": "${REDIS_URL}",
+    "FACEBOOK_APP_ID": "${FACEBOOK_APP_ID}",
+    "FACEBOOK_APP_SECRET": "${FACEBOOK_APP_SECRET}",
+    "FACEBOOK_ACCESS_TOKEN": "${FACEBOOK_ACCESS_TOKEN}",
+    "WHATSAPP_TOKEN": "${WHATSAPP_TOKEN}",
+    "WHATSAPP_PHONE_ID": "${WHATSAPP_PHONE_ID}",
+    "WHATSAPP_VERIFY_TOKEN": "${WHATSAPP_VERIFY_TOKEN}",
+    "OPENAI_API_KEY": "${OPENAI_API_KEY}",
+    "GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}",
+    "YELP_API_KEY": "${YELP_API_KEY}",
+    "TRUSTPILOT_API_KEY": "${TRUSTPILOT_API_KEY}",
+    "JWT_SECRET": "${JWT_SECRET}",
+    "ENCRYPTION_KEY": "${ENCRYPTION_KEY}",
+    "NEXT_PUBLIC_APP_URL": "${NEXT_PUBLIC_APP_URL}"
+  },
+  "volumes": [
+    {
+      "source": "olofunnel_uploads",
+      "target": "/app/uploads"
+    }
+  ],
+  "services": [
+    {
+      "name": "postgres",
+      "image": "postgres:15-alpine",
+      "environment": {
+        "POSTGRES_DB": "olofunnel",
+        "POSTGRES_USER": "${POSTGRES_USER}",
+        "POSTGRES_PASSWORD": "${POSTGRES_PASSWORD}"
+      },
+      "volumes": [
+        {
+          "source": "olofunnel_postgres",
+          "target": "/var/lib/postgresql/data"
+        }
+      ]
+    },
+    {
+      "name": "redis",
+      "image": "redis:7-alpine",
+      "volumes": [
+        {
+          "source": "olofunnel_redis",
+          "target": "/data"
+        }
+      ]
+    }
+  ],
+  "build": {
+    "context": ".",
+    "dockerfile": "Dockerfile"
+  },
+  "deploy": {
+    "replicas": 1,
+    "resources": {
+      "limits": {
+        "memory": "1G",
+        "cpu": "0.5"
+      }
+    }
+  }
+}
