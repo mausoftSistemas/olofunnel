@@ -143,7 +143,7 @@ async function processIncomingMessage(message: any) {
       data: {
         level: 'ERROR',
         message: 'Failed to process incoming WhatsApp message',
-        data: { error: error.message, message },
+        data: { error: error instanceof Error ? error.message : String(error), message },
         source: 'WHATSAPP_WEBHOOK'
       }
     })

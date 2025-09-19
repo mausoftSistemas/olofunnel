@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     // Verificar que es un evento de leadgen
     if (body.object !== 'leadgen') {
       return NextResponse.json({ status: 'ignored' })
@@ -110,12 +110,12 @@ async function processLeadgenWebhook(value: any) {
 
   } catch (error) {
     console.error('Error processing leadgen webhook:', error)
-    
+
     await prisma.systemLog.create({
       data: {
         level: 'ERROR',
         message: 'Failed to process leadgen webhook',
-        data: { error: error.message, value },
+        data: { error: error instanceof Error ? error.message : String(error), value },
         source: 'FACEBOOK_WEBHOOK'
       }
     })
@@ -145,7 +145,7 @@ async function sendLeadNotifications(lead: any, aiAnalysis: any) {
           data: {
             leadId: lead.id,
             type: service.name === 'WhatsApp' ? 'WHATSAPP_SENT' : 'NOTE_ADDED',
-            message: service.success 
+            message: service.success
               ? `${service.name} notification sent successfully`
               : `${service.name} notification failed`,
             successful: service.success
@@ -162,12 +162,12 @@ async function sendLeadNotifications(lead: any, aiAnalysis: any) {
 
   } catch (error) {
     console.error('Error sending lead notifications:', error)
-    
+
     await prisma.leadInteraction.create({
       data: {
         leadId: lead.id,
         type: 'NOTE_ADDED',
-        message: 'Failed to send notifications: ' + error.message,
+        message: 'Failed to send notifications: ' + (error instanceof Error ? error.message : String(error)),
         successful: false
       }
     })
