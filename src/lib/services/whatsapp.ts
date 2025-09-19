@@ -30,13 +30,28 @@ export class WhatsAppService {
   private accessToken: string
   private phoneNumberId: string
   private baseUrl = 'https://graph.facebook.com/v18.0'
+  private isEnabled: boolean
 
-  constructor(accessToken: string, phoneNumberId: string) {
-    this.accessToken = accessToken
-    this.phoneNumberId = phoneNumberId
+  constructor(accessToken?: string, phoneNumberId?: string) {
+    this.accessToken = accessToken || ''
+    this.phoneNumberId = phoneNumberId || ''
+    this.isEnabled = !!(accessToken && phoneNumberId)
+  }
+
+  isWhatsAppEnabled(): boolean {
+    return this.isEnabled
   }
 
   async sendMessage(message: WhatsAppMessage): Promise<WhatsAppResponse> {
+    if (!this.isEnabled) {
+      console.log('WhatsApp is disabled - message would be sent:', message)
+      return {
+        messaging_product: 'whatsapp',
+        contacts: [{ input: message.to, wa_id: message.to }],
+        messages: [{ id: 'disabled-' + Date.now() }]
+      }
+    }
+
     try {
       const response = await axios.post(
         `${this.baseUrl}/${this.phoneNumberId}/messages`,
@@ -154,6 +169,14 @@ ${leadData.email && leadData.phone ? `• Datos de contacto completos` : ''}
   }
 
   async getBusinessProfile(): Promise<any> {
+    if (!this.isEnabled) {
+      return {
+        verified_name: 'WhatsApp Disabled',
+        display_phone_number: 'N/A',
+        quality_rating: 'N/A'
+      }
+    }
+
     try {
       const response = await axios.get(
         `${this.baseUrl}/${this.phoneNumberId}`,
@@ -175,6 +198,11 @@ ${leadData.email && leadData.phone ? `• Datos de contacto completos` : ''}
   }
 
   async markMessageAsRead(messageId: string): Promise<boolean> {
+    if (!this.isEnabled) {
+      console.log('WhatsApp is disabled - would mark message as read:', messageId)
+      return true
+    }
+
     try {
       await axios.post(
         `${this.baseUrl}/${this.phoneNumberId}/messages`,

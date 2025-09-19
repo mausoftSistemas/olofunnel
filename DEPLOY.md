@@ -282,6 +282,50 @@ npm run db:seed
 npm run lint
 ```
 
+## � Configuración Mínima vs Completa
+
+### **Configuración Mínima (Solo lo Esencial)**
+Para que OloFunnel funcione básicamente, solo necesitas:
+
+```bash
+# Variables OBLIGATORIAS
+DATABASE_URL=postgresql://olofunnel:password@postgres:5432/olofunnel
+REDIS_URL=redis://redis:6379
+JWT_SECRET=tu_jwt_secret_muy_seguro
+ENCRYPTION_KEY=tu_clave_32_caracteres_exactos
+OPENAI_API_KEY=sk-tu_openai_key_aqui
+
+# Variables OPCIONALES (puedes usar placeholders)
+FACEBOOK_APP_ID=placeholder
+WHATSAPP_TOKEN=placeholder
+GOOGLE_MAPS_API_KEY=placeholder
+```
+
+### **Funcionalidades por Configuración**
+
+| Servicio | Variable | Funcionalidad | Estado sin configurar |
+|----------|----------|---------------|----------------------|
+| **Base** | DATABASE_URL, REDIS_URL | Almacenamiento | ❌ No funciona |
+| **IA** | OPENAI_API_KEY | Análisis de leads/reseñas | ❌ No funciona |
+| **Facebook** | FACEBOOK_APP_ID | Obtener leads de FB Ads | ⚠️ Funciona sin leads |
+| **WhatsApp** | WHATSAPP_TOKEN | Notificaciones automáticas | ✅ Usa logs en BD |
+| **Google Maps** | GOOGLE_MAPS_API_KEY | Reseñas de Google | ⚠️ Funciona sin reseñas |
+| **Yelp** | YELP_API_KEY | Reseñas de restaurantes | ⚠️ Funciona sin reseñas |
+
+### **Orden de Implementación Recomendado**
+
+1. **Fase 1 - Básico** (Funciona inmediatamente)
+   - DATABASE_URL, REDIS_URL, JWT_SECRET, ENCRYPTION_KEY
+   - OPENAI_API_KEY
+
+2. **Fase 2 - Leads** (Automatización de leads)
+   - FACEBOOK_APP_ID, FACEBOOK_APP_SECRET
+   - WHATSAPP_TOKEN, WHATSAPP_PHONE_ID
+
+3. **Fase 3 - Reseñas** (Análisis completo)
+   - GOOGLE_MAPS_API_KEY
+   - YELP_API_KEY, TRUSTPILOT_API_KEY
+
 ## 📞 Soporte
 
 Para soporte técnico:

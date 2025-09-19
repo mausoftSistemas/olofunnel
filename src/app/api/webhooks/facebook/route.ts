@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { FacebookService } from '@/lib/services/facebook'
 import { OpenAIService } from '@/lib/services/openai'
-import { WhatsAppService } from '@/lib/services/whatsapp'
+import { NotificationManager } from '@/lib/services/notifications'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -89,9 +89,9 @@ async function processLeadgenWebhook(value: any) {
       }
     })
 
-    // Si el score es mayor a 60, enviar por WhatsApp
+    // Si el score es mayor a 60, enviar notificaciones
     if (aiAnalysis.score >= 60) {
-      await sendLeadToWhatsApp(savedLead, aiAnalysis)
+      await sendLeadNotifications(savedLead, aiAnalysis)
     }
 
     // Log del evento
@@ -122,49 +122,52 @@ async function processLeadgenWebhook(value: any) {
   }
 }
 
-async function sendLeadToWhatsApp(lead: any, aiAnalysis: any) {
+async function sendLeadNotifications(lead: any, aiAnalysis: any) {
   try {
-    const whatsappService = new WhatsAppService(
-      process.env.WHATSAPP_TOKEN!,
-      process.env.WHATSAPP_PHONE_ID!
-    )
+    const notificationManager = new NotificationManager()
+    const result = await notificationManager.sendLeadNotification(lead, aiAnalysis)
 
-    // Generar mensaje personalizado
-    const message = await OpenAIService.generateWhatsAppMessage(lead, aiAnalysis)
+    // Actualizar lead si se envió alguna notificación
+    if (result.sent) {
+      await prisma.lead.update({
+        where: { id: lead.id },
+        data: {
+          whatsappSent: result.services.find(s => s.name === 'WhatsApp')?.success || false,
+          whatsappSentAt: result.services.find(s => s.name === 'WhatsApp')?.success ? new Date() : null
+        }
+      })
+    }
 
-    // Obtener número de WhatsApp del usuario (configuración)
-    const userPhone = process.env.WHATSAPP_NOTIFICATION_NUMBER || '+5215512345678'
-
-    // Enviar mensaje
-    await whatsappService.sendTextMessage(userPhone, message)
-
-    // Actualizar lead
-    await prisma.lead.update({
-      where: { id: lead.id },
-      data: {
-        whatsappSent: true,
-        whatsappSentAt: new Date()
+    // Registrar interacciones para cada servicio
+    for (const service of result.services) {
+      if (service.enabled) {
+        await prisma.leadInteraction.create({
+          data: {
+            leadId: lead.id,
+            type: service.name === 'WhatsApp' ? 'WHATSAPP_SENT' : 'NOTE_ADDED',
+            message: service.success 
+              ? `${service.name} notification sent successfully`
+              : `${service.name} notification failed`,
+            successful: service.success
+          }
+        })
       }
-    })
+    }
 
-    // Registrar interacción
-    await prisma.leadInteraction.create({
-      data: {
-        leadId: lead.id,
-        type: 'WHATSAPP_SENT',
-        message: message,
-        successful: true
-      }
+    console.log(`Lead ${lead.id} notifications:`, {
+      sent: result.sent,
+      enabledServices: notificationManager.getEnabledServices(),
+      disabledServices: notificationManager.getDisabledServices()
     })
 
   } catch (error) {
-    console.error('Error sending lead to WhatsApp:', error)
+    console.error('Error sending lead notifications:', error)
     
     await prisma.leadInteraction.create({
       data: {
         leadId: lead.id,
-        type: 'WHATSAPP_SENT',
-        message: 'Failed to send',
+        type: 'NOTE_ADDED',
+        message: 'Failed to send notifications: ' + error.message,
         successful: false
       }
     })

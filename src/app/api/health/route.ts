@@ -9,9 +9,14 @@ export async function GET() {
     // Verificar variables de entorno críticas
     const requiredEnvVars = [
       'DATABASE_URL',
-      'OPENAI_API_KEY',
+      'OPENAI_API_KEY'
+    ]
+    
+    // Variables opcionales
+    const optionalEnvVars = [
       'FACEBOOK_APP_ID',
-      'WHATSAPP_TOKEN'
+      'WHATSAPP_TOKEN',
+      'GOOGLE_MAPS_API_KEY'
     ]
     
     const missingEnvVars = requiredEnvVars.filter(
@@ -22,17 +27,31 @@ export async function GET() {
       return NextResponse.json(
         { 
           status: 'unhealthy',
-          error: `Missing environment variables: ${missingEnvVars.join(', ')}`
+          error: `Missing critical environment variables: ${missingEnvVars.join(', ')}`
         },
         { status: 503 }
       )
     }
+
+    // Verificar variables opcionales
+    const missingOptionalVars = optionalEnvVars.filter(
+      envVar => !process.env[envVar]
+    )
     
     return NextResponse.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
       version: process.env.npm_package_version || '1.0.0',
-      environment: process.env.NODE_ENV || 'development'
+      environment: process.env.NODE_ENV || 'development',
+      services: {
+        database: 'connected',
+        openai: process.env.OPENAI_API_KEY ? 'configured' : 'missing',
+        facebook: process.env.FACEBOOK_APP_ID ? 'configured' : 'disabled',
+        whatsapp: process.env.WHATSAPP_TOKEN ? 'configured' : 'disabled',
+        googleMaps: process.env.GOOGLE_MAPS_API_KEY ? 'configured' : 'disabled'
+      },
+      warnings: missingOptionalVars.length > 0 ? 
+        `Optional services disabled: ${missingOptionalVars.join(', ')}` : null
     })
   } catch (error) {
     console.error('Health check failed:', error)
