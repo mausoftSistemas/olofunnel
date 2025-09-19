@@ -1,8 +1,18 @@
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+let openai: OpenAI | null = null
+
+function getOpenAIClient(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable is required')
+    }
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  }
+  return openai
+}
 
 export interface LeadAnalysis {
   score: number
@@ -23,6 +33,17 @@ export interface ReviewAnalysis {
 export class OpenAIService {
   static async analyzeLead(leadData: any): Promise<LeadAnalysis> {
     try {
+      // Check if OpenAI is available
+      if (!process.env.OPENAI_API_KEY) {
+        console.log('OpenAI API key not available, using fallback analysis')
+        return {
+          score: 50,
+          confidence: 30,
+          factors: ['OpenAI no configurado - análisis básico'],
+          priority: 'MEDIUM',
+          recommendation: 'Configurar OpenAI para análisis avanzado'
+        }
+      }
       const prompt = `
         Analiza este lead de Facebook Ads y proporciona una puntuación de 0-100:
         
@@ -52,7 +73,8 @@ export class OpenAIService {
         }
       `
 
-      const response = await openai.chat.completions.create({
+      const client = getOpenAIClient()
+      const response = await client.chat.completions.create({
         model: 'gpt-4',
         messages: [
           {
@@ -87,6 +109,18 @@ export class OpenAIService {
 
   static async analyzeReview(reviewData: any): Promise<ReviewAnalysis> {
     try {
+      // Check if OpenAI is available
+      if (!process.env.OPENAI_API_KEY) {
+        console.log('OpenAI API key not available, using fallback analysis')
+        const rating = reviewData.rating || 3
+        return {
+          sentiment: rating >= 4 ? 'POSITIVE' : rating <= 2 ? 'NEGATIVE' : 'NEUTRAL',
+          sentimentScore: (rating - 3) / 2,
+          topics: ['OpenAI no configurado - análisis básico'],
+          summary: 'Análisis básico basado en rating',
+          actionItems: ['Configurar OpenAI para análisis avanzado']
+        }
+      }
       const prompt = `
         Analiza esta reseña y proporciona un análisis detallado:
         
@@ -114,7 +148,8 @@ export class OpenAIService {
         }
       `
 
-      const response = await openai.chat.completions.create({
+      const client = getOpenAIClient()
+      const response = await client.chat.completions.create({
         model: 'gpt-4',
         messages: [
           {
@@ -150,6 +185,24 @@ export class OpenAIService {
 
   static async generateWhatsAppMessage(leadData: any, analysis: LeadAnalysis): Promise<string> {
     try {
+      // Check if OpenAI is available
+      if (!process.env.OPENAI_API_KEY) {
+        console.log('OpenAI API key not available, using template message')
+        return `
+🔥 NUEVO LEAD CALIFICADO - OloFunnel
+
+👤 Hola ${leadData.name || 'Cliente'},
+
+Nuestro sistema te ha calificado con ${analysis.score}/100 puntos.
+
+📊 Factores de calificación:
+${analysis.factors.slice(0, 3).map((f: string) => `• ${f}`).join('\n')}
+
+¿Te gustaría conocer más sobre nuestros servicios?
+
+¡Responde este mensaje para comenzar! 🚀
+        `.trim()
+      }
       const prompt = `
         Genera un mensaje personalizado de WhatsApp para este lead calificado:
         
@@ -170,7 +223,8 @@ export class OpenAIService {
         Formato del mensaje para WhatsApp Business.
       `
 
-      const response = await openai.chat.completions.create({
+      const client = getOpenAIClient()
+      const response = await client.chat.completions.create({
         model: 'gpt-4',
         messages: [
           {
