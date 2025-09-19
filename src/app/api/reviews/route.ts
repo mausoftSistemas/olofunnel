@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
             sentiment: aiAnalysis.sentiment,
             sentimentScore: aiAnalysis.sentimentScore,
             topics: aiAnalysis.topics,
-            aiAnalysis: aiAnalysis,
+            aiAnalysis: aiAnalysis as any,
             userId: 'default-user' // TODO: Obtener del contexto
           }
         })

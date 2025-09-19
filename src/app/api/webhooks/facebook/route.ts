@@ -82,7 +82,7 @@ async function processLeadgenWebhook(value: any) {
         location: parsedData.location,
         interests: parsedData.interests || [],
         aiScore: aiAnalysis.score,
-        aiAnalysis: aiAnalysis,
+        aiAnalysis: aiAnalysis as any,
         status: 'NEW',
         userId: 'default-user', // TODO: Obtener del contexto
         campaignId: campaignId
